@@ -1,11 +1,13 @@
 name: Camp Monitor
 on:
   schedule:
-    - cron: '0 * * * *' # 1時間に1回
+    - cron: '0 * * * *'
   workflow_dispatch:
 jobs:
   run:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # これが「書き込み許可」の魔法の一行です
     steps:
       - uses: actions/checkout@v3
       - name: Set up Python
