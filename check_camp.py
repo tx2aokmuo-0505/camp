@@ -19,7 +19,7 @@ def main():
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36"}
     
     # 【テスト1】まず「今から動くよ」とDiscordに言わせる
-    send_discord("📢【テスト】今からなっぷに見張りを開始するよ！🐈")
+    send_discord("📢【テスト】今からなっぷ見張りを開始するよ！🐈")
     
     response = requests.get(URL, headers=headers)
     soup = BeautifulSoup(response.text, "html.parser")
@@ -32,7 +32,7 @@ def main():
     if unique_camps_count > 0:
         msg = f"🌟【発見！】なっぷで {unique_camps_count} 件のキャンプ場が見つかったよ！\nすぐ見て！: {URL}"
     else:
-        msg = "☁️【報告】今はなっぷに空きがないみたい...引き続き見張るね！"
+        msg = "☁️【報告】今はなっぷに空きがないみたい...引き続き見張るね！😽"
     
     send_discord(msg)
 
