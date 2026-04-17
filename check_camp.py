@@ -19,7 +19,7 @@ def main():
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36"}
     
     # 【テスト1】まず「今から動くよ」とDiscordに言わせる
-    send_discord("📢【テスト】今からなっぷ見張りを開始するよ！🐈")
+    #send_discord("📢【テスト】今からなっぷ見張りを開始するよ！🐈")
     
     response = requests.get(URL, headers=headers)
     soup = BeautifulSoup(response.text, "html.parser")
