@@ -1,16 +1,16 @@
-name: Camp Patrol with Toku
+name: Suwa Camp Patrol
 
 on:
   schedule:
-    # 15分おきに実行 (UTC時間なのでJST-9時間)
+    # 15分おきに自動実行 (UTC時間)
     - cron: '*/15 * * * *'
-  workflow_dispatch: # 手動で動かすボタンも一応付けておく
+  workflow_dispatch: # 手動で実行するボタンを出す設定
 
 jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      contents: write # 徳ポイントを保存（書き込み）するために必要
+      contents: write # 徳ポイント(txtファイル)を書き換えて保存するために必要
 
     steps:
       - name: Checkout code
@@ -34,7 +34,8 @@ jobs:
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git add sent_messages.txt
+          # 変更（徳の加算）があった場合のみGitHubに保存する
           if ! git diff --cached --quiet; then
-            git commit -m "Update Toku point [skip ci]"
+            git commit -m "Update Suwa Toku point [skip ci]"
             git push
           fi
