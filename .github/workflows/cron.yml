@@ -1,29 +1,40 @@
-name: Camp Monitor
+name: Camp Patrol with Toku
+
 on:
   schedule:
+    # 15分おきに実行 (UTC時間なのでJST-9時間)
     - cron: '*/15 * * * *'
-  workflow_dispatch:
+  workflow_dispatch: # 手動で動かすボタンも一応付けておく
+
 jobs:
-  run:
+  build:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: write # 徳ポイントを保存（書き込み）するために必要
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v3
+
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v4
         with:
           python-version: '3.9'
+
       - name: Install dependencies
         run: pip install requests beautifulsoup4
+
       - name: Run script
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: python check_camp.py
-      - name: Save data
+
+      - name: Commit and Push Toku point
         run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
           git add sent_messages.txt
-          git commit -m "update history" || exit 0
-          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git HEAD:main
+          if ! git diff --cached --quiet; then
+            git commit -m "Update Toku point [skip ci]"
+            git push
+          fi
