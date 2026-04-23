@@ -5,74 +5,79 @@ import random
 import time
 
 # --- 【設定】調査対象と送り先 ---
-# 検索URL（ご提示の2026年お盆期間・特定エリア）
 URL = "https://www.nap-camp.com/list?locationList=%5B137%2C138%2C139%2C140%2C141%2C142%2C143%2C144%2C120%2C121%2C122%2C123%2C124%2C125%2C126%2C127%2C128%2C129%2C130%2C131%2C132%2C133%2C134%2C135%2C136%2C165%2C166%2C167%2C168%2C169%2C170%5D&checkIn=2026-08-13&checkOut=2026-08-15&sortId=21"
-# DiscordのWebhook URL（環境変数 DISCORD_WEBHOOK_URL から読み込みます）
 DISCORD_WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_URL")
 
-# --- 【機能】徳ポイントをファイルで管理・更新する ---
+# --- 【機能】諏訪の称号を決定するロジック ---
+def get_shogo(toku):
+    # 徳ポイントに応じて、今のあなたの「位（くらい）」を判定します
+    if toku < 20: return "諏訪の迷い人（片足温泉状態）"
+    elif toku < 50: return "諏訪湖のさざなみ級"
+    elif toku < 100: return "ワカサギ釣り見習い"
+    elif toku < 200: return "御柱祭の引き手（候補）"
+    elif toku < 500: return "上社・下社の常連修験者"
+    elif toku < 1000: return "諏訪湖に浮かぶ伝説の火玉"
+    else: return "⛩️ 諏訪大明神の化身 ⛩️"
+
+# --- 【機能】徳ポイント管理とシンクロ率算出 ---
 def get_and_update_toku():
-    # 実行履歴を保存するファイル名（実行するたびにここに1行増えます）
     history_file = "sent_messages.txt"
-    # 1回の空振りチェックごとに「2ポイント」の徳を授与
     toku_per_check = 2
     
-    # [1] まだファイルがない場合は、空のファイルを作成する
+    # 記録用ファイルがなければ新しく作る
     if not os.path.exists(history_file):
         with open(history_file, "w") as f:
             pass
             
-    # [2] 今まで何回実行したか、ファイルの行数を数えて計算する
+    # ファイルを読み込んで、今までのパトロール回数（行数）を数える
     with open(history_file, "r") as f:
         lines = f.readlines()
         count = len(lines)
     
-    # [3] 今回のパトロール記録をファイルに追記する（徳を積み上げる）
+    # 今回の実行記録をファイルに追記する
     with open(history_file, "a") as f:
-        f.write(f"{time.ctime()}: No vacancy found. Toku stack.\n")
+        f.write(f"{time.ctime()}: Suwa patrol check\n")
         
-    # [4] 現在の合計徳ポイントを算出して返す（これまでの回数 + 今回の1回）
-    return (count + 1) * toku_per_check
+    toku = (count + 1) * toku_per_check
 
-# --- 【機能】Discordへメッセージを投稿する ---
+    # シンクロ率を計算（徳に比例しつつ、±5.0%のゆらぎ）
+    sync_base = min(95.0, (toku / 10)) # 徳が貯まるほどベース上昇
+    sync_rate = round(sync_base + random.uniform(-5.0, 5.0), 2)
+    sync_rate = max(0, min(100, sync_rate)) # 0〜100に収める
+        
+    return toku, sync_rate
+
 def send_discord(message):
-    # Webhook URLが設定されている時だけ送信を実行する
     if DISCORD_WEBHOOK_URL:
         requests.post(DISCORD_WEBHOOK_URL, json={"content": message})
 
-# --- 【メイン処理】 ---
 def main():
-    # サーバーを驚かせないよう、ブラウザ（Chrome等）のふりをする設定
+    # ブラウザからのアクセスに見せかける設定
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36"}
     
-    # [5] なっぷのWebサイトを読み込みに行く
+    # なっぷのサイトにアクセスして情報を取ってくる
     try:
         response = requests.get(URL, headers=headers)
         soup = BeautifulSoup(response.text, "html.parser")
         
-        # [6] 予約ボタンがある「キャンプ場名（aタグ）」をすべて抽出する
+        # 予約可能なキャンプ場の名前を探し出す
         camps = soup.select('section.c-item_card h3 a')
-        # [7] 名前だけを取り出して、重複があれば削除する
         camp_names = list(set([camp.get_text(strip=True) for camp in camps]))
-        # [8] 発見したキャンプ場の数をカウント
         count = len(camp_names)
     except Exception as e:
-        # 通信トラブル等があればDiscordでこっそり教える
-        send_discord(f"⚠️ パトロール中にエラーが発生しました: {e}")
+        send_discord(f"⚠️ 諏訪パトロール中にシステムエラー: {e}")
         return
 
-    # [9] 空き情報の有無で処理を分岐
     if count > 0:
-        # --- 【空きアリ！】キャンプ場名とURLを通知 ---
+        # 【発見時】
         names_str = "\n・" + "\n・".join(camp_names)
-        msg = f"🌟【発見！】現在予約可能なキャンプ場は {count} 件です！\n{names_str}\n\n今すぐ確認：\n{URL}"
+        msg = f"🌟【諏訪の結界、消失！】\n諏訪大明神のお導きか、現在予約可能なキャンプ場は {count} 件です！\n{names_str}\n\n今すぐ御柱を立てに行く：\n{URL}"
     else:
-        # --- 【空きナシ…】徳ポイントを計算し、大喜利メッセージを送信 ---
+        # 【空きなし時】
+        current_toku, sync_rate = get_and_update_toku()
+        shogo = get_shogo(current_toku)
         
-        # [10] 現在の徳ポイントを取得（ファイルに1行追記される）
-        current_toku = get_and_update_toku()
-        
-        # [11] ご提示いただいた57個のメッセージリスト（内容はそのまま維持）
+        # あなたが指定した57個のメッセージリスト
         messages = [
             "☁️【報告】キャンプ場、突然“概念”になりました。触れられません。",
             "☁️【報告】条件に合うキャンプ場、今は電波の向こう側で踊っています。接続不可。",
@@ -104,7 +109,7 @@ def main():
             "☁️【報告】ゼロ。あまりに見つからないので、プログラムが気を利かせて「近所の公園でテントを張る許可」を市長に取りに行こうとしています。",
             "☁️【報告】キャンプ場、突然「自分を予約できるのは、徳を積んだ者だけだ」と悟りを開き、ハードルを爆上げしました。",
             "☁️【極秘】現在、キャンプ場は「透明人間専用サイト」となっております。一般の方には表示されません。",
-            "☁️【報告】ゼロ。あまりに空かないので、プログラムが「もう、私がキャンプ場になります」と言い出しましたが、却下しました。",
+            "☁️【報告】ゼロ。あまりに空かないので、プログラムが「もう, 私がキャンプ場になります」と言い出しましたが、却下しました。",
             "☁️【事実】見つかりません。でも、お盆にキャンプに行かないことで、あなたは「渋滞」という名の地獄を回避する権利を得ました。",
             "☁️【予報】空きなし。でも安心してください。今、あなたの徳ポイントが加算されています。10,000貯まると奇跡が起きるかもしれません。",
             "☁️【報告】キャンプ場、あなたの執念を察知して「現在、私は山ではなく巨大な抹茶ケーキである」という情報を流しています。",
@@ -113,14 +118,14 @@ def main():
             "☁️【報告】キャンプ場、現在「なっぷ」のサーバー内で迷子中。見つけ次第、連れ戻します。",
             "☁️【運勢】小吉。キャンプ場は見つかりませんが、今日中に「失くしたと思っていた予備のガス缶」が見つかります。",
             "☁️【ラッキーアイテム】蚊取り線香。たとえキャンプに行けずとも、部屋で焚けばそこはもうベースキャンプです。",
-            "☁️　⚠️ System Warning: 現在、駒ヶ根周辺の標高データがあなたの熱意により溶け出しています。",
-            "☁️　📡 Noise Interference: ザー……ザー……「こちら……駒ヶ根……聞こえるか……家で……焼きそばを……焼くんだ……」……通信が途絶しました。",
+            "☁️　⚠️ System Warning: 現在、諏訪周辺の標高データがあなたの熱意により溶け出しています。",
+            "☁️　📡 Noise Interference: ザー……ザー……「こちら……諏訪……聞こえるか……湖で……焼きそばを……焼くんだ……」……通信が途絶しました。",
             "☁️ 📉 Market Crash: キャンプ場の価値が暴騰し、現在1泊につき「魂の半分」または「一生分の薪」が必要になっています。",
-            "☁️ 勇者よ！ 今の装備（検索環境）では 駒ヶ根の結界は 破れぬ！ 出直してくるのだ！",
+            "☁️ 勇者よ！ 今の装備（検索環境）では 諏訪の結界は 破れぬ！ 出直してくるのだ！",
             "☁️【報告】あなたは「キャンプ場を 探す」を 唱えた！ しかし なにも おきなかった！",
             "☁️ 宿屋の主人「お盆の間は 宿はどこも満室だよ。 お客さん、野宿のスキルはあるかい？」",
             "☁️【警告】この先に 進むには 「予約確定メール」という 伝説のアイテムが 必要だ！",
-            "☁️「リスナーの皆さん、お盆の予約争奪戦、盛り上がってますねぇ。現在の駒ヶ根、空きは……なし！ また15分後に会いましょう。」",
+            "☁️「リスナーの皆さん、お盆の予約争奪戦、盛り上がってますねぇ。現在の諏訪、空きは……なし！ また15分後に会いましょう。」",
             "☁️「今日のラッキーキャンプ飯は……『自宅で焼く冷凍餃子』です！ キャンプ場？ ありませんよ（笑）」",
             "☁️【報告】キャンプ場、ついに「ツチノコ」と同等の希少価値に認定されました。",
             "☁️【極秘】現在、キャンプ場は「妖精専用」となっております。身長10cm以上の方は予約できません。",
@@ -133,15 +138,19 @@ def main():
             "☁️ Runtime Error: Unexpected_Reality: 予期せぬ「お盆の満室」が発生しました。例外処理（やけ食い）を実行します。"
         ]
         
-        # [12] 57個の中から1つをランダムで選ぶ
         selected_msg = random.choice(messages)
         
-        # [13] Discordに送る最終メッセージを組み立てる（徳ポイントを添える）
-        msg = f"{selected_msg}\n\n✨ 現在の徳ポイント: **{current_toku} pt**"
+        # 最終的なメッセージ組み立て
+        msg = (
+            f"{selected_msg}\n\n"
+            f"--- ⛩️ 諏訪パトロール・ステータス ---\n"
+            f"称号：【{shogo}】\n"
+            f"累計徳ポイント：{current_toku} pt\n"
+            f"諏訪大明神とのシンクロ率：{sync_rate}%"
+        )
 
-    # [14] 組み立てたメッセージをDiscordに送信
+    # Discordに送信
     send_discord(msg)
 
-# プログラムが実行されたら main関数 を呼び出す
 if __name__ == "__main__":
     main()
