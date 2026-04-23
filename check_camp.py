@@ -1,6 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
 import os
+import random  # ← これが抜けていたので追加しました！
 
 # 検索URL（2026年8月13日〜 長野・山梨・岐阜）
 URL = "https://www.nap-camp.com/list?locationList=%5B137%2C138%2C139%2C140%2C141%2C142%2C143%2C144%2C120%2C121%2C122%2C123%2C124%2C125%2C126%2C127%2C128%2C129%2C130%2C131%2C132%2C133%2C134%2C135%2C136%2C165%2C166%2C167%2C168%2C169%2C170%5D&checkIn=2026-08-13&checkOut=2026-08-15&sortId=21"
@@ -28,7 +29,7 @@ def main():
         names_str = "\n・" + "\n・".join(camp_names)
         msg = f"🌟【発見！】現在予約可能なキャンプ場は {count} 件です！\n{names_str}\n\n今すぐ確認：\n{URL}"
     else:
-        # 👇好きな言葉を好きなだけ入れて！
+        # 👇 あなたが考えた最高のセリフたち
         messages = [
             "☁️【報告】キャンプ場、突然“概念”になりました。触れられません。",
             "☁️【報告】条件に合うキャンプ場、今は電波の向こう側で踊っています。接続不可。",
