@@ -9,6 +9,11 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    
+    # Node.js 20の警告を消し、24で動かすための設定を追加
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
     permissions:
       contents: write # 徳ポイント(txtファイル)を書き換えて保存するために必要
 
@@ -27,15 +32,19 @@ jobs:
       - name: Run script
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        # Pythonファイル名が check_camp.py であることを確認してください
         run: python check_camp.py
 
       - name: Commit and Push Toku point
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          git add sent_messages.txt
-          # 変更（徳の加算）があった場合のみGitHubに保存する
-          if ! git diff --cached --quiet; then
-            git commit -m "Update Suwa Toku point [skip ci]"
-            git push
+          # ファイルが存在しないエラーを防ぐため、存在確認後にadd
+          if [ -f sent_messages.txt ]; then
+            git add sent_messages.txt
+            # 変更（徳の加算）があった場合のみGitHubに保存する
+            if ! git diff --cached --quiet; then
+              git commit -m "Update Suwa Toku point [skip ci]"
+              git push
+            fi
           fi
